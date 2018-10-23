@@ -9,10 +9,9 @@ public class Movement : NetworkBehaviour
 	public List<Data> clientData = new List<Data>();
 	public List<Data> toServer   = new List<Data>();
 	public int counter;
-	void Start () {
-				
-	}
-	
+
+	private Data data;
+
 	// Update is called once per frame
 	void Update () 
 	{
@@ -22,30 +21,56 @@ public class Movement : NetworkBehaviour
 			float _h = 0;
 			if ((_h = Input.GetAxis("Horizontal")) > 0)
 			{
-				toServer.Add(new Data{h = _h});
+				data = new Data {h = _h};
 			}
 		}
-
-		if (counter % 5 == 0)
-		{
-			Cmd_SendData(toServer);
-		}
-		counter++;
+		
 	}
 
-	[Command]
-	private void Cmd_SendData(List<Data> datas)
+	void FixedUpdate()
 	{
-		serverData = datas;
+		if (isClient && data != null)
+		{
+			toServer.Add(data);
+		}
+
+		if ((isServer) && serverData.Count > 0)
+		{
+			serverData.RemoveAt(0);
+		}
+		
+		if (counter++ % 5 == 0 && toServer.Count > 0)
+		{
+			Cmd_SendData(new WraperData(){d = toServer});
+		}
+	}
+
+	private float speed = 5;
+	
+	private void Move(Data data)
+	{
+		transform.Translate(new Vector3(data.h * Time.fixedDeltaTime * speed,0,0));
+	}
+	
+	[Command]
+	private void Cmd_SendData(WraperData datas)
+	{
+		serverData = datas.d;
+		Rpc_SendData(datas);
 	}
 	
 	[ClientRpc]
-	private void Rpc_SendData(List<Data> datas)
+	private void Rpc_SendData(WraperData datas)
 	{
-		serverData = datas;
+		clientData = datas.d;
 	}
 }
 
+[System.Serializable]
+public class WraperData
+{
+	public List<Data> d = new List<Data>();
+}
 [System.Serializable]
 public class Data
 {
